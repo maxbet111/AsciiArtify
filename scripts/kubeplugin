@@ -1,30 +1,45 @@
 #!/bin/bash
 
+# Строгий режим: зупиняє скрипт при помилках, використанні порожніх змінних 
+# або збоях всередині пайплайнів (pipefail)
+set -euo pipefail
+
+# Перевірка наявності всіх трьох аргументів (робимо це до зчитування, щоб уникнути помилок)
+if [[ "$#" -ne 3 ]]; then
+  echo "Помилка: Недостатньо аргументів."
+  echo "Використання: kubectl res-stats <namespace | all> <action> <resource_type>"
+  echo "Приклад 1: kubectl res-stats kube-system top pods"
+  echo "Приклад 2: kubectl res-stats all top pods"
+  exit 1
+fi
+
 # Зчитуємо аргументи
 NAMESPACE=$1
 ACTION=$2
 RESOURCE_TYPE=$3
 
-# Перевірка наявності всіх трьох аргументів
-if [ "$#" -ne 3 ]; then
-  echo "Помилка: Недостатньо аргументів."
-  echo "Використання: kubectl <plugin-name> <namespace> <action> <resource_type>"
-  echo "Приклад: kubectl res-stats kube-system top pods"
-  exit 1
+# Формуємо масив аргументів для kubectl залежно від запиту
+if [[ "$NAMESPACE" == "all" || "$NAMESPACE" == "-A" ]]; then
+  KUBECTL_ARGS=("-A")
+else
+  KUBECTL_ARGS=("-n" "$NAMESPACE")
 fi
 
-# Перехоплюємо можливі помилки kubectl (наприклад, якщо metrics-server не працює)
-set -e
-
-# Виконуємо команду kubectl і передаємо весь вивід в awk для обробки.
-# Передаємо змінні RESOURCE_TYPE та NAMESPACE всередину awk через прапорець -v.
-kubectl "$ACTION" "$RESOURCE_TYPE" -n "$NAMESPACE" | awk -v res="$RESOURCE_TYPE" -v ns="$NAMESPACE" '
-  # NR > 1 означає "пропустити перший рядок (заголовки)"
+# Виконуємо kubectl і передаємо вивід в єдиний awk-скрипт.
+# awk використовує вбудовану змінну NF (кількість колонок), щоб зрозуміти,
+# який формат даних до нього прийшов (з -A чи з конкретного namespace).
+kubectl "$ACTION" "$RESOURCE_TYPE" "${KUBECTL_ARGS[@]}" | awk -v res="$RESOURCE_TYPE" -v ns="$NAMESPACE" '
   NR > 1 {
-    # Форматуємо та виводимо: Resource, Namespace, Name, CPU, Memory
-    printf "%s, %s, %s, %s, %s\n", res, ns, $1, $2, $3
+    if (NF == 4) {
+      # Режим "-A": $1=NAMESPACE, $2=NAME, $3=CPU, $4=MEMORY
+      printf "%s, %s, %s, %s, %s\n", res, $1, $2, $3, $4
+    } else if (NF == 3) {
+      # Режим конкретного namespace: $1=NAME, $2=CPU, $3=MEMORY
+      printf "%s, %s, %s, %s, %s\n", res, ns, $1, $2, $3
+    }
   }
 '
+
 Інструкція з використання плагіна kubectl res-stats
 Цей плагін є зручною обгорткою для стандартної команди kubectl top. Він збирає статистику використання ресурсів (CPU та оперативної пам'яті) у кластері Kubernetes і виводить її у CSV-форматі (значення, розділені комами). Це ідеально підходить для експорту даних у табличні редактори (Excel, Google Sheets) або передачі в інші bash-скрипти для автоматизації.
 
