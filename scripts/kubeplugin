@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Строгий режим: зупиняє скрипт при помилках, використанні порожніх змінних 
+# або збоях всередині пайплайнів (pipefail)
+set -euo pipefail
+
+# Перевірка наявності всіх трьох аргументів (робимо це до зчитування, щоб уникнути помилок)
+if [[ "$#" -ne 3 ]]; then
+  echo "Помилка: Недостатньо аргументів."
+  echo "Використання: kubectl res-stats <namespace | all> <action> <resource_type>"
+  echo "Приклад 1: kubectl res-stats kube-system top pods"
+  echo "Приклад 2: kubectl res-stats all top pods"
+  exit 1
+fi
+
+# Зчитуємо аргументи
+NAMESPACE=$1
+ACTION=$2
+RESOURCE_TYPE=$3
+
+# Формуємо масив аргументів для kubectl залежно від запиту
+if [[ "$NAMESPACE" == "all" || "$NAMESPACE" == "-A" ]]; then
+  KUBECTL_ARGS=("-A")
+else
+  KUBECTL_ARGS=("-n" "$NAMESPACE")
+fi
+
+# Виконуємо kubectl і передаємо вивід в єдиний awk-скрипт.
+# awk використовує вбудовану змінну NF (кількість колонок), щоб зрозуміти,
+# який формат даних до нього прийшов (з -A чи з конкретного namespace).
+kubectl "$ACTION" "$RESOURCE_TYPE" "${KUBECTL_ARGS[@]}" | awk -v res="$RESOURCE_TYPE" -v ns="$NAMESPACE" '
+  NR > 1 {
+    if (NF == 4) {
+      # Режим "-A": $1=NAMESPACE, $2=NAME, $3=CPU, $4=MEMORY
+      printf "%s, %s, %s, %s, %s\n", res, $1, $2, $3, $4
+    } else if (NF == 3) {
+      # Режим конкретного namespace: $1=NAME, $2=CPU, $3=MEMORY
+      printf "%s, %s, %s, %s, %s\n", res, ns, $1, $2, $3
+    }
+  }
+'
