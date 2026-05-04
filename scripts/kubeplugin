@@ -39,7 +39,6 @@ kubectl "$ACTION" "$RESOURCE_TYPE" "${KUBECTL_ARGS[@]}" | awk -v res="$RESOURCE_
     }
   }
 '
-
 pods, kube-system, coredns-ccb96694c-dsmwn, 2m, 33Mi
 pods, kube-system, local-path-provisioner-5cf85fd84d-kbdlm, 1m, 18Mi
 pods, kube-system, metrics-server-5985cbc9d7-md72h, 4m, 37Mi
