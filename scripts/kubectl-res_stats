@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Зчитуємо аргументи
+NAMESPACE=$1
+ACTION=$2
+RESOURCE_TYPE=$3
+
+# Перевірка наявності всіх трьох аргументів
+if [ "$#" -ne 3 ]; then
+  echo "Помилка: Недостатньо аргументів."
+  echo "Використання: kubectl <plugin-name> <namespace> <action> <resource_type>"
+  echo "Приклад: kubectl res-stats kube-system top pods"
+  exit 1
+fi
+
+# Перехоплюємо можливі помилки kubectl (наприклад, якщо metrics-server не працює)
+set -e
+
+# Виконуємо команду kubectl і передаємо весь вивід в awk для обробки.
+# Передаємо змінні RESOURCE_TYPE та NAMESPACE всередину awk через прапорець -v.
+kubectl "$ACTION" "$RESOURCE_TYPE" -n "$NAMESPACE" | awk -v res="$RESOURCE_TYPE" -v ns="$NAMESPACE" '
+  # NR > 1 означає "пропустити перший рядок (заголовки)"
+  NR > 1 {
+    # Форматуємо та виводимо: Resource, Namespace, Name, CPU, Memory
+    printf "%s, %s, %s, %s, %s\n", res, ns, $1, $2, $3
+  }
+'
