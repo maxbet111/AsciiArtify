@@ -47,3 +47,7 @@ pods, kube-system, svclb-traefik-6362e865-j89sl, 0m, 0Mi
 pods, kube-system, svclb-traefik-6362e865-vd8tk, 0m, 0Mi
 pods, kube-system, svclb-traefik-6362e865-xf7zg, 0m, 0Mi
 pods, kube-system, traefik-5d45fc8cc9-nn987, 1m, 133Mi
+
+
+Інструкція з використання плагіна kubectl res-stats
+Цей плагін є зручною обгорткою для стандартної команди kubectl top. Він збирає статистику використання ресурсів (CPU та оперативної пам'яті) у кластері Kubernetes і виводить її у CSV-форматі (значення, розділені комами). Це ідеально підходить для експорту даних у табличні редактори (Excel, Google Sheets) або передачі в інші bash-скрипти для автоматизації.
